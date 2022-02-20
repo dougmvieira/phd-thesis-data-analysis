@@ -101,7 +101,7 @@ def recover_underlying(parity, weights):
         mask = ~np.isnan(mids)
         return mids[mask].dot(weights[mask])/np.sum(weights[mask])
 
-    mid_std = mid_prices.diff('time').std()
+    mid_std = mid_prices.diff('time').std('time')
     mid_normalised = (mid_prices - mid_prices.mean('time'))/mid_std
     reconstructed = mid_normalised.to_pandas().apply(aggregate_mids)
     reconstructed.name = 'underlying'
