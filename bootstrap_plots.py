@@ -4,6 +4,7 @@ import pandas as pd
 import xarray as xr
 from fyne import blackscholes, heston
 from matplotlib.ticker import PercentFormatter
+from matplotlib.dates import DateFormatter
 
 from utils import A4_HEIGHT, A4_WIDTH
 
@@ -40,10 +41,12 @@ def compare_with_itm(underlying, quotes, strike):
     normalised_prices = pd.concat(
         [underlying.to_series(), itm_normalised.to_series()],
         keys=['underlying', 'itm_option'], axis=1)
+    normalised_prices.index += quotes.date.values
 
     fig, ax = plt.subplots(figsize=(A4_WIDTH, A4_HEIGHT/2))
     normalised_prices.plot(ax=ax)
     ax.set_ylabel('standardised price')
+    ax.xaxis.set_major_formatter(DateFormatter('%H:%M'))
 
     return fig
 

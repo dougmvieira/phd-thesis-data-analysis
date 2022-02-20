@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 from fyne import heston
+from matplotlib.dates import DateFormatter
 
 from utils import A4_HEIGHT, A4_WIDTH
 
@@ -12,13 +13,26 @@ def heston_volatility_plot(heston_params, sample_stds):
     if np.all(heston_params.vol.isnull().data):
         return fig
 
-    np.sqrt(heston_params.vol).to_series().plot(ax=ax, color='tab:blue',
-                                                label='heston')
-    ax.fill_between(sample_stds.time.data.astype(int), sample_stds.lower.data,
-                    sample_stds.upper.data, color='tab:orange', alpha=0.3,
-                    step='mid')
-    sample_stds.estimate.plot(label='sample', ax=ax, color='tab:orange',
-                              drawstyle='steps-mid')
+    heston_time = heston_params.date + heston_params.time
+    sample_time = heston_params.date + sample_stds.time
+    heston_vol = np.sqrt(heston_params.vol)
+    ax.plot(heston_time, heston_vol, color='tab:blue', label='heston')
+    ax.fill_between(
+        sample_time,
+        sample_stds.lower,
+        sample_stds.upper,
+        color='tab:orange',
+        alpha=0.3,
+        step='mid',
+    )
+    ax.plot(
+        sample_time,
+        sample_stds.estimate,
+        color='tab:orange',
+        label='sample',
+        drawstyle='steps-mid',
+    )
+    ax.xaxis.set_major_formatter(DateFormatter('%H:%M'))
     ax.set_title('')
     ax.legend()
     ax.set_ylabel('volatility')
