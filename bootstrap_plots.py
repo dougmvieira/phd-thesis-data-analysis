@@ -6,6 +6,7 @@ from fyne import blackscholes, heston
 from matplotlib.ticker import PercentFormatter
 from matplotlib.dates import DateFormatter
 
+from numpy_tricks import aggregate, groupby
 from utils import A4_HEIGHT, A4_WIDTH
 
 
@@ -99,18 +100,22 @@ def compute_heston_ivs_slice(ivs, forwards_bonds, heston_params):
 
 
 def heston_calibration_plot(ivs, forwards_bonds, heston_params, time):
-    ivs = ivs.set_index({'option_id': ['payoff', 'expiry', 'strike']})
-    ivs_slice = ivs.sel(time=time)
-    expiries = np.unique(ivs_slice.expiry)[2:5]
-    ivs_slice = ivs_slice.where(ivs_slice.expiry.isin(expiries), drop=True)
-    ivs_slice = xr.concat([ivs_slice.sel(payoff='C'),
-                           ivs_slice.sel(payoff='P')], 'payoff')
-    ivs_slice = ivs_slice.dropna('option_id')
-    ivs_slice['spread'] = ivs_slice.ask - ivs_slice.bid
-    ivs_slice = ivs_slice.groupby('option_id').map(
-        lambda x: (x.isel(payoff=0)
-                   if x.isel(payoff=0).spread < x.isel(payoff=1).spread
-                   else x.isel(payoff=1)))
+    expiries = np.unique(ivs.expiry)[2:5]
+    ivs_slice = ivs.sel(time=time, option_id=ivs.expiry.isin(expiries))
+    key_coords = ['years_to_expiry', 'expiry', 'strike']
+    group_keys, group_pos = groupby(
+        **{name: ivs_slice[name].values for name in key_coords}
+    )
+    bids = aggregate(
+        np.nanmax, ivs_slice.bid.values, group_keys, group_pos, np.float64
+    )
+    asks = aggregate(
+        np.nanmin, ivs_slice.ask.values, group_keys, group_pos, np.float64
+    )
+    ivs_slice = xr.Dataset(
+        dict(bid=('option_id', bids), ask=('option_id', asks)),
+        {name: ('option_id', group_keys[name]) for name in key_coords}
+    ).set_index(option_id=['expiry', 'strike'])
 
     heston_params_slice = heston_params.sel(time=time)
     forwards_bonds_slice = forwards_bonds.sel(time=time)
