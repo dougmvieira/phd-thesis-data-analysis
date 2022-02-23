@@ -13,7 +13,7 @@ INDEX_DTYPE = np.dtype(
     ]
 )
 
-def format_gridded_quotes(tick_quotes, time_granularity):
+def format_gridded_quotes(tick_quotes, time_granularity, start_time):
     index_coarse = tick_quotes['index'].copy()
     index_coarse['time'] = np.ceil(
         index_coarse['time'] / time_granularity
@@ -61,6 +61,7 @@ def format_gridded_quotes(tick_quotes, time_granularity):
         .set_index(index=['option_id', 'time'])
         .unstack('index')
         .ffill('time')
+        .sel(time=slice(start_time, None))
         .reset_index('option_id', drop=True)
         .assign_coords(
             expiry=('option_id', uniq_specs['expiry']),

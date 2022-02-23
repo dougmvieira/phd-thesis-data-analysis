@@ -39,6 +39,7 @@ greeks_filename = 'greeks.nc'
 results_dir = 'results/'
 
 second = np.timedelta64(1, 's').astype('m8[ns]')
+start_time = np.timedelta64(1, 'h').astype('m8[ns]')
 itm_strike = 3000
 midday = '12:00:00'
 n_workers = 12
@@ -115,8 +116,8 @@ bootstrap_source = read_source('bootstrap.py')
 tick_quotes = HashedStruct(
     np.lib.format.open_memmap(tick_quotes_filename, mode='r')
 )
-quotes = make_dataset(quotes_filename, format_gridded_quotes, tick_quotes, second,
-                      bootstrap_source)
+quotes = make_dataset(quotes_filename, format_gridded_quotes, tick_quotes,
+                      second, start_time, bootstrap_source)
 
 
 print('Bootstrapping')
