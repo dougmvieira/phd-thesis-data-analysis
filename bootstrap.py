@@ -110,8 +110,9 @@ def recover_underlying(parity, weights):
 
 
 def pair_puts_and_calls(quotes):
-    quotes = quotes.set_index(dict(option_id=['payoff', 'expiry', 'strike']))
-    calls, puts = quotes.sel(payoff='C'), quotes.sel(payoff='P')
+    quotes = quotes.set_index(option_id=['expiry', 'strike'])
+    calls = quotes.sel(option_id=quotes.payoff == 'C')
+    puts = quotes.sel(option_id=quotes.payoff == 'P')
     parity = {'bid': calls.bid - puts.ask, 'ask': calls.ask - puts.bid}
     parity = xr.Dataset(parity).dropna('option_id', how='all')
     parity['mid'] = (parity.bid + parity.ask)/2
