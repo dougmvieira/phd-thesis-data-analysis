@@ -68,12 +68,12 @@ def calibrate_vol_map(ivs_slice, forwards, vol_guess, kappa, theta, nu, rho):
 
 def calibration_preprocessing(ivs, forwards_bonds, time):
     ivs = ivs.set_index({'option_id': ['payoff', 'expiry', 'strike']})
-    ivs['mid'] = (ivs.ask + ivs.bid)/2
+    ivs['mid'] = (ivs.ask + ivs.bid) / 2
     ivs['spread'] = ivs.ask - ivs.bid
     forwards = forwards_bonds.forward
 
     expiries = np.unique(ivs.expiry)
-    ivs = ivs.where(ivs.expiry.isin(expiries[2:5]), drop=True)
+    ivs = ivs.sel(option_id=ivs.expiry.isin(expiries[2:5]))
     forwards = forwards.sel(expiry=expiries[2:5])
 
     ivs_slice_raw = ivs.sel(time=time)

@@ -92,7 +92,6 @@ def plot_forward_bounds(no_arb_bounds):
 
 def plot_no_arb_yield_curve(no_arb_bounds, parity):
     no_arb_bounds = no_arb_bounds.bounds
-    parity = parity.set_index({'option_id': ['expiry', 'strike']})
 
     bond_bounds = no_arb_bounds.sel(asset='bond').to_dataset('side'
                               ).reset_coords(drop=True).to_dataframe()
@@ -112,7 +111,6 @@ def plot_no_arb_yield_curve(no_arb_bounds, parity):
 
 def plot_no_arb_dividend_curve(no_arb_bounds, parity):
     no_arb_bounds = no_arb_bounds.bounds
-    parity = parity.set_index({'option_id': ['expiry', 'strike']})
 
     forward_bounds = no_arb_bounds.sel(asset='forward').to_dataset('side'
                                  ).reset_coords(drop=True).to_dataframe()

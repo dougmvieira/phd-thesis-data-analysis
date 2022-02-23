@@ -73,12 +73,6 @@ def format_gridded_quotes(tick_quotes, time_granularity, start_time):
     return gridded_quotes
 
 
-def pair_puts_calls(quotes):
-    calls, puts = quotes.sel(payoff='C'), quotes.sel(payoff='P')
-    parity = {'bid': calls.bid - puts.ask, 'ask': calls.ask - puts.bid}
-    return xr.Dataset(parity).dropna('option_id', how='all')
-
-
 def pca_on_midprice(prices):
     mid_prices = prices.set_index({'option_id': ['expiry', 'strike']}).mid
     mid_changes = mid_prices.diff('time').fillna(0)
@@ -115,8 +109,7 @@ def pair_puts_and_calls(quotes):
     puts = quotes.sel(option_id=quotes.payoff == 'P')
     parity = {'bid': calls.bid - puts.ask, 'ask': calls.ask - puts.bid}
     parity = xr.Dataset(parity).dropna('option_id', how='all')
-    parity['mid'] = (parity.bid + parity.ask)/2
-
+    parity['mid'] = (parity.bid + parity.ask) / 2
     return parity.reset_index('option_id')
 
 
