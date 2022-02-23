@@ -54,9 +54,11 @@ def compare_with_itm(underlying, quotes, strike):
 def plot_forwards(forwards_bonds):
     fig, ax = plt.subplots(figsize=(A4_WIDTH, A4_HEIGHT/2))
     forwards = forwards_bonds.forward.to_series().unstack('expiry')
+    forwards.index += forwards_bonds.date.values
     forwards.columns = pd.Index(forwards.columns.date, name='expiry')
     forwards.plot(ax=ax)
     ax.set_ylabel('forward price')
+    ax.xaxis.set_major_formatter(DateFormatter('%H:%M'))
     return fig
 
 
