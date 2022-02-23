@@ -119,8 +119,9 @@ def pair_puts_and_calls(quotes):
     return parity.reset_index('option_id')
 
 
-def forward_bond_regression_map(parity, underlying):
-    parity['half_spread'] = (parity['ask'] - parity['bid'])/2
+def forward_bond_regression_map(parity, underlying, expiry):
+    parity = parity.set_index(option_id='strike').rename(option_id='strike')
+    parity['half_spread'] = (parity['ask'] - parity['bid']) / 2
     reg_data = parity.reset_coords(drop=True
                     ).assign_coords({'underlying': underlying}
                     ).to_dataframe().dropna().reset_index('strike')
@@ -142,18 +143,23 @@ def forward_bond_regression_map(parity, underlying):
     max_spread = relative_spreads.max().data
     in_spread = (relative_spreads <= 1).sum().data/relative_spreads.count().data
     forward = forward.where(~(relative_spreads > 1).any('strike'))
-
-    return forward.assign_coords(bond=bond, max_spread=max_spread,
-                                 in_spread=in_spread)
+    coords = dict(
+        bond=bond,
+        expiry=expiry,
+        max_spread=max_spread,
+        in_spread=in_spread,
+    )
+    return forward.assign_coords(coords)
 
 
 def forward_bond_regression(parity, underlying):
-    underlying = underlying.underlying
-    parity = parity.set_index({'option_id': ['expiry', 'strike']})
-
-    forwards_bonds = parity.groupby('expiry').map(
-        lambda p: forward_bond_regression_map(p.unstack('option_id'),
-                                              underlying))
+    forwards_bonds_lst = [
+        forward_bond_regression_map(
+            parity.sel(option_id=parity.expiry == expiry),
+            underlying.underlying,
+            expiry
+        ) for expiry in np.unique(parity.expiry)
+    ]
+    forwards_bonds = xr.concat(forwards_bonds_lst, 'expiry')
     forwards_bonds.name = 'forward'
-    forwards_bonds = forwards_bonds.to_dataset().reset_coords('bond')
-    return forwards_bonds
+    return forwards_bonds.to_dataset().reset_coords('bond')
