@@ -137,7 +137,7 @@ no_arb_bounds = make_dataset(no_arb_bounds_filename, compute_no_arb_bounds,
 
 print('Heston calibration')
 heston_calibration_source = read_source('heston_calibration.py')
-ivs = make_dataset(ivs_filename, compute_ivs, quotes, forwards_bonds.load(),
+ivs = make_dataset(ivs_filename, compute_ivs, quotes, forwards_bonds,
                    n_workers, heston_calibration_source)
 params_guess = make_dataset(params_guess_filename, calibrate_heston_with_app,
                             ivs, forwards_bonds, midday,

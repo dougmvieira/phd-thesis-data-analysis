@@ -145,7 +145,7 @@ def compute_ivs_map(quotes, forward):
 
 
 def compute_ivs(quotes, forwards_bonds, n_workers):
-    quotes = format_serialised(quotes, forwards_bonds)
+    quotes = format_serialised(quotes, forwards_bonds.load())
     forwards = forwards_bonds.forward
     with ProcessPoolExecutor(max_workers=n_workers) as executor:
         ivs_ask = combine_dataarrays(compute_ivs_map, 'expiry', quotes.ask,
