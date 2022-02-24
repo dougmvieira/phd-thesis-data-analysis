@@ -107,26 +107,39 @@ def calibrate_heston_with_app(ivs, forwards_bonds, time):
     return xr.Dataset({'param': params_guess})
 
 
-def calibrate_heston(ivs, forwards_bonds, time, params_guess, n_workers):
+def calibrate_heston(
+    ivs,
+    forwards_bonds,
+    time,
+    params_guess,
+    n_workers,
+    recalibrate_crosssection=True,
+    tqdm_desc=None,
+):
     params_guess = params_guess.param
     ivs, forwards_slice, ivs_slice, calls = calibration_preprocessing(
         ivs.load(), forwards_bonds.load(), time)
 
-    vol, kappa, theta, nu, rho = heston.calibration_crosssectional(
-        forwards_slice.sel(expiry=ivs_slice.expiry.values).values,
-        ivs_slice.discounted_strike, ivs_slice.years_to_expiry, calls,
-        params_guess.data, weights=1/ivs_slice.spread,
-        enforce_feller_cond=True)
+    vol, kappa, theta, nu, rho = (
+        heston.calibration_crosssectional(
+            forwards_slice.sel(expiry=ivs_slice.expiry.values).values,
+            ivs_slice.discounted_strike, ivs_slice.years_to_expiry,
+            calls,
+            params_guess.values,
+            weights=1/ivs_slice.spread,
+            enforce_feller_cond=True,
+        ) if recalibrate_crosssection else params_guess.values
+    )
 
     calibrate_smile = partial(calibrate_vol_map,
                               forwards=forwards_bonds.forward, vol_guess=vol,
                               kappa=kappa, theta=theta, nu=nu, rho=rho)
 
+    desc = tqdm_desc or 'Heston vol calibration'
     with Pool(n_workers) as p:
         vols_iter = p.imap(calibrate_smile,
                            (smile for _, smile in ivs.groupby('time')))
-        vols = np.array(list(tqdm(vols_iter, desc='Heston vol calibration',
-                                  total=len(ivs.time))))
+        vols = np.array(list(tqdm(vols_iter, desc=desc, total=len(ivs.time))))
 
     vols = xr.DataArray(vols, dict(time=ivs.time, date=ivs.date), 'time')
 
