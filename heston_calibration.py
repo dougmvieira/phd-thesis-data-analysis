@@ -82,7 +82,7 @@ def calibration_preprocessing(ivs, forwards_bonds, time):
         forwards_slice.sel(expiry=ivs_slice_raw.expiry.values).values,
         ivs_slice_raw.discounted_strike, ivs_slice_raw.years_to_expiry,
         ivs_slice_raw.mid)
-    ivs = ivs.sel(option_id=(0.1 <= deltas) & (deltas < 0.9))
+    ivs = ivs.sel(option_id=(0.05 <= deltas) & (deltas < 0.95))
 
 
     ivs_slice = calibration_selection(
