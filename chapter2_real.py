@@ -384,8 +384,8 @@ for payoff in ['C', 'P']:
             greeks_lst[mid],
             heston_params_lst[mid],
             forwards_bonds_lst[mid],
-            'delta',
-            'C',
+            greek,
+            payoff,
             volatility_plots_source
         )
 make_plot(
