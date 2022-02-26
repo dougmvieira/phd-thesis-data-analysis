@@ -55,7 +55,7 @@ def calibrate_vol_map(ivs_slice, forwards, vol_guess, kappa, theta, nu, rho):
             vol = heston.calibration_vol(
                 forwards_slice.values, ivs_slice.discounted_strike.values,
                 ivs_slice.years_to_expiry.values, calls, kappa, theta, nu, rho,
-                vol_guess=vol_guess, weights=1/ivs_slice.spread)
+                vol_guess=vol_guess)
         except ValueError:
             print('WARNING: Runtime error in Heston vol calibration.')
             vol = np.nan
@@ -69,7 +69,6 @@ def calibrate_vol_map(ivs_slice, forwards, vol_guess, kappa, theta, nu, rho):
 def calibration_preprocessing(ivs, forwards_bonds, time):
     ivs = ivs.set_index({'option_id': ['payoff', 'expiry', 'strike']})
     ivs['mid'] = (ivs.ask + ivs.bid) / 2
-    ivs['spread'] = ivs.ask - ivs.bid
     forwards = forwards_bonds.forward
 
     expiries = np.unique(ivs.expiry)
@@ -83,7 +82,6 @@ def calibration_preprocessing(ivs, forwards_bonds, time):
         ivs_slice_raw.discounted_strike, ivs_slice_raw.years_to_expiry,
         ivs_slice_raw.mid)
     ivs = ivs.sel(option_id=(0.05 <= deltas) & (deltas < 0.95))
-
 
     ivs_slice = calibration_selection(
         ivs.sel(time=time).dropna('option_id'), forwards_slice)
@@ -101,8 +99,8 @@ def calibrate_heston_with_app(ivs, forwards_bonds, time):
     names = ['vol', 'kappa', 'theta', 'nu', 'rho']
     params_guess = heston_app(
         forwards_slice.sel(expiry=ivs_slice.expiry.values).values,
-        ivs_slice.discounted_strike.values, ivs_slice.years_to_expiry.values, calls, False,
-        weights=1/ivs_slice.spread, enforce_feller_cond=True)
+        ivs_slice.discounted_strike.values, ivs_slice.years_to_expiry.values,
+        calls, False, enforce_feller_cond=True)
     params_guess = xr.DataArray(list(params_guess), dict(name=names), 'name')
     return xr.Dataset({'param': params_guess})
 
@@ -126,7 +124,6 @@ def calibrate_heston(
             ivs_slice.discounted_strike, ivs_slice.years_to_expiry,
             calls,
             params_guess.values,
-            weights=1/ivs_slice.spread,
             enforce_feller_cond=True,
         ) if recalibrate_crosssection else params_guess.values
     )
