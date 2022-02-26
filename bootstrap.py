@@ -55,7 +55,8 @@ def format_gridded_quotes(tick_quotes, time_granularity, start_time):
         date=((), gridded_quotes_arr['date']),
     )
     expiries = uniq_specs['expiry']
-    years_to_expiry = np.busday_count(tick_quotes['date'], expiries) / 252
+    date = tick_quotes['date'].astype('M8[D]')
+    years_to_expiry = np.busday_count(date, expiries) / 252
     gridded_quotes = (
         xr.Dataset(variables, coords)
         .set_index(index=['option_id', 'time'])
