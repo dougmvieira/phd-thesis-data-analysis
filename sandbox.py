@@ -24,7 +24,7 @@ from utils import read_source, hash_dataset
 
 
 cache_filename = 'cache.json'
-tick_quotes_filename = 'tick_quotes.npy'
+tick_quotes_filename = 'tick_quotes.npz'
 quotes_filename = 'quotes.nc'
 underlying_filename = 'recovered_underlying.nc'
 parity_filename = 'parity.nc'
@@ -39,7 +39,7 @@ greeks_filename = 'greeks.nc'
 results_dir = 'results/'
 
 second = np.timedelta64(1, 's').astype('m8[ns]')
-start_time = np.timedelta64(1, 'h').astype('m8[ns]')
+start_time = np.timedelta64(8, 'h').astype('m8[ns]')
 itm_strike = 3000
 midday = '12:00:00'
 n_workers = 12
