@@ -92,10 +92,17 @@ def recover_underlying(parity, weights):
     mid_prices = parity.set_index({'option_id': ['expiry', 'strike']}).mid
     weights = weights.set_index({'option_id': ['expiry', 'strike']}).weights
     weights = weights.isel(explained=0).to_series()
+    total_weight = np.sum(weights.values)
 
     def aggregate_mids(mids):
         mask = ~np.isnan(mids)
-        return mids[mask].dot(weights[mask])/np.sum(weights[mask])
+        slice_weights = weights[mask]
+        slice_total_weight = np.sum(slice_weights.values)
+        return (
+            mids[mask].dot(slice_weights) / slice_total_weight
+            if slice_total_weight / total_weight > 0.95
+            else np.nan
+        )
 
     mid_std = mid_prices.diff('time').std('time')
     mid_normalised = (mid_prices - mid_prices.mean('time'))/mid_std
