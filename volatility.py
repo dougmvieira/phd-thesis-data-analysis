@@ -45,7 +45,10 @@ def compute_daily_stds(forwards_bonds):
 
 
 def compute_sample_stds(forwards_bonds):
-    log_returns = np.log(forwards_bonds.forward.isel(expiry=0)).diff('time')
+    log_returns = (
+        np.log(forwards_bonds.forward.isel(expiry=0))
+        .diff('time').dropna('time')
+    )
 
     stds = equal_split(log_returns, 'time', n_splits).map(sample_stds_map)
     time = xr.DataArray([interval.mid for interval in stds.time_bins.data],
