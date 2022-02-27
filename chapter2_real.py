@@ -41,7 +41,7 @@ results_folder = 'chapter2_real/'
 
 second = np.timedelta64(1, 's').astype('m8[ns]')
 start_time = np.timedelta64(8, 'h').astype('m8[ns]')
-itm_strike = 3000
+itm_strike = 4000
 midday = '12:00:00'
 n_expiries = 5
 n_workers = 12
