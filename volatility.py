@@ -1,7 +1,9 @@
+import pandas as pd
 import numpy as np
 import xarray as xr
 import statsmodels.api as sm
 from arch.bootstrap import optimal_block_length, StationaryBootstrap
+from fyne import heston
 from scipy.stats import norm
 
 from heston_calibration import format_serialised
@@ -97,3 +99,46 @@ def greeks_regression(quotes, forwards_bonds, heston_params):
     greeks = mids.groupby('option_id').map(
         lambda m: greeks_regression_map(m, forwards, heston_vols))
     return greeks.to_dataset('greek')
+
+
+def pool_data(quotes, forwards_bonds, heston_params, expiries, atm_delta):
+    mids = (quotes.bid + quotes.ask) / 2
+    mids = mids.sel(option_id=mids.expiry.isin(expiries))
+    mid_changes = mids.diff('time')
+    underlying_changes = forwards_bonds.forward.isel(expiry=0).diff('time')
+    vol_changes = heston_params.vol.diff('time')
+
+    half_hour = np.timedelta64(30, 'm')
+    samples = np.unique(np.round(quotes.time / half_hour) * half_hour).astype('m8[s]')[1:-1]
+    forwards = forwards_bonds.forward.sel(expiry=mids.expiry, time=samples).values
+    strikes = (forwards_bonds.bond.sel(expiry=mids.expiry) * mids.strike).values[:, None]
+    expiries = mids.years_to_expiry.values[:, None]
+    vols = heston_params.vol.sel(time=samples).values[None, :]
+    params = (
+        heston_params.kappa.item(),
+        heston_params.theta.item(),
+        heston_params.nu.item(),
+        heston_params.rho.item(),
+    )
+    is_put = (mids.payoff == 'P').values[:, None]
+    deltas = heston.delta(forwards, strikes, expiries, vols, *params, is_put)
+    is_atm = (1 - atm_delta <= deltas) & (deltas <= atm_delta)
+    is_atm |= ((1 - atm_delta) - 1 <= deltas) & (deltas <= atm_delta - 1)
+    vegas = heston.vega(forwards, strikes, expiries, vols, *params)
+    greeks = xr.Dataset(
+        dict(
+            delta=(('option_id', 'time'), deltas),
+            vega=(('option_id', 'time'), vegas),
+            is_atm=(('option_id', 'time'), is_atm),
+        ),
+        dict(time=('time', samples)),
+    ).reindex(time=vol_changes.time, method='nearest')
+
+    pooled = pd.DataFrame(
+        dict(
+            mid_change=mid_changes.values.ravel(),
+            delta=(greeks.delta * underlying_changes).values.ravel(),
+            vega=(greeks.vega * vol_changes).values.ravel(),
+        )
+    ).loc[greeks.is_atm.values.ravel()].dropna(axis=0)
+    return pooled.to_xarray().reset_index('index')
