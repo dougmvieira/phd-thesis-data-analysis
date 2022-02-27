@@ -63,9 +63,21 @@ def greeks_plot(greeks, heston_params, forwards_bonds, greek_name, payoff):
     if np.all(heston_params.vol.isnull().data):
         return fig
 
-    greeks = greeks.set_index({'option_id': ['payoff', 'expiry', 'strike']})
+    forwards = forwards_bonds.forward.sel(expiry=greeks.expiry).mean('time')
+    moneyness = (
+        np.log(greeks.discounted_strike / forwards)
+        / np.sqrt(greeks.years_to_expiry)
+    )
+    greeks = (
+        greeks[greek_name]
+        .assign_coords(moneyness=moneyness)
+        .set_index({'option_id': ['payoff', 'expiry', 'moneyness']})
+        .sel(payoff=payoff)
+    )
+    greeks = greeks.sel(
+        option_id=(-0.5 <= greeks.moneyness) & (greeks.moneyness <= 0.5)
+    )
     expiries = np.unique(greeks.expiry)
-    greeks = greeks[greek_name].sel(payoff=payoff)
     for e, ax in zip(expiries[2:5], axes):
         forwards_slice = forwards_bonds.forward.sel(expiry=e)
         greeks_slice = greeks.sel(option_id=greeks.expiry == e).sel(expiry=e)
@@ -102,6 +114,7 @@ def greeks_plot(greeks, heston_params, forwards_bonds, greek_name, payoff):
         lb = centre + 2 * (lo_qtile - centre)
         greeks_emp_ub.plot(marker='v', linewidth=0, ax=ax)
         greeks_emp_lb.plot(marker='^', linewidth=0, ax=ax)
+        ax.set_xlim(-0.5, 0.5)
         ax.set_ylim(lb, ub)
         greek_heston.plot(ax=ax)
         ax.set_title('expiry: {}'.format(np.datetime_as_string(e, unit='D')))
@@ -112,14 +125,26 @@ def greeks_plot(greeks, heston_params, forwards_bonds, greek_name, payoff):
     return fig
 
 
-def greeks_r2_plot(greeks):
+def greeks_r2_plot(greeks, forwards_bonds):
     fig, axes = plt.subplots(3, 1, figsize=(A4_WIDTH, A4_HEIGHT))
     try:
         greeks = greeks['delta']
     except KeyError:
         return fig
 
-    greeks = greeks.set_index({'option_id': ['payoff', 'expiry', 'strike']})
+    forwards = forwards_bonds.forward.sel(expiry=greeks.expiry).mean('time')
+    moneyness = (
+        np.log(greeks.discounted_strike / forwards)
+        / np.sqrt(greeks.years_to_expiry)
+    )
+    greeks = (
+        greeks
+        .assign_coords(moneyness=moneyness)
+        .set_index({'option_id': ['payoff', 'expiry', 'moneyness']})
+    )
+    greeks = greeks.sel(
+        option_id=(-0.5 <= greeks.moneyness) & (greeks.moneyness <= 0.5)
+    )
     expiries = np.unique(greeks.expiry)
     for e, ax in zip(expiries[2:5], axes):
         r2 = greeks.r2.sel(expiry=e).to_series().unstack('payoff')
@@ -134,14 +159,26 @@ def greeks_r2_plot(greeks):
     return fig
 
 
-def greeks_sr2_plot(greeks):
+def greeks_sr2_plot(greeks, forwards_bonds):
     fig, axes = plt.subplots(3, 1, figsize=(A4_WIDTH, A4_HEIGHT))
     try:
         greeks = greeks['delta']
     except KeyError:
         return fig
 
-    greeks = greeks.set_index({'option_id': ['payoff', 'expiry', 'strike']})
+    forwards = forwards_bonds.forward.sel(expiry=greeks.expiry).mean('time')
+    moneyness = (
+        np.log(greeks.discounted_strike / forwards)
+        / np.sqrt(greeks.years_to_expiry)
+    )
+    greeks = (
+        greeks
+        .assign_coords(moneyness=moneyness)
+        .set_index({'option_id': ['payoff', 'expiry', 'moneyness']})
+    )
+    greeks = greeks.sel(
+        option_id=(-0.5 <= greeks.moneyness) & (greeks.moneyness <= 0.5)
+    )
     expiries = np.unique(greeks.expiry)
     for e, ax in zip(expiries[2:5], axes):
         sr2 = greeks.sr2.sel(expiry=e).to_series().unstack('payoff')

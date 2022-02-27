@@ -89,38 +89,41 @@ def compute_heston_ivs_slice(ivs, forwards_bonds, heston_params):
     strikes = np.linspace(min_strike, max_strike)
     bond = forwards_bonds.bond.data
     forward = forwards_bonds.forward.data
-    expiry = ivs.years_to_expiry.isel(strike=0).data
+    expiry = ivs.years_to_expiry.isel(moneyness=0).data
     vol, kappa = heston_params.vol, heston_params.kappa
     theta, nu, rho = heston_params.theta, heston_params.nu, heston_params.rho
     heston_calls = heston.formula(forward, bond*strikes, expiry, vol, kappa,
                                   theta, nu, rho)
     heston_ivs = blackscholes.implied_vol(forward, bond*strikes, expiry,
                                           heston_calls)
-    return pd.Series(heston_ivs, strikes)
+    moneyness = np.log(strikes / forward) / np.sqrt(expiry)
+    return pd.Series(heston_ivs, moneyness)
 
 
 def heston_calibration_plot(ivs, forwards_bonds, heston_params, time):
     expiries = np.unique(ivs.expiry)[2:5]
     ivs_slice = ivs.sel(time=time, option_id=ivs.expiry.isin(expiries))
-    key_coords = ['years_to_expiry', 'expiry', 'strike']
-    group_keys, group_pos = groupby(
-        **{name: ivs_slice[name].values for name in key_coords}
+    forwards = forwards_bonds.forward.sel(time=time, expiry=ivs_slice.expiry)
+    moneyness = (
+        np.log(ivs_slice.discounted_strike / forwards)
+        / np.sqrt(ivs_slice.years_to_expiry)
     )
-    bids = aggregate(
-        np.nanmax, ivs_slice.bid.values, group_keys, group_pos, np.float64
+    otm_mask = (
+        ((ivs_slice.payoff.values == 'C') & (moneyness.values > 0))
+        | ((ivs_slice.payoff.values == 'P') & (moneyness.values < 0))
     )
-    asks = aggregate(
-        np.nanmin, ivs_slice.ask.values, group_keys, group_pos, np.float64
+    moneyness_mask = (-0.5 <= moneyness.values) & (moneyness.values <= 0.5)
+    ivs_slice = (
+        ivs_slice
+        .assign_coords(moneyness=moneyness)
+        .sel(option_id=otm_mask & moneyness_mask)
+        .set_index(option_id=['expiry', 'moneyness'])
     )
-    ivs_slice = xr.Dataset(
-        dict(bid=('option_id', bids), ask=('option_id', asks)),
-        {name: ('option_id', group_keys[name]) for name in key_coords}
-    ).set_index(option_id=['expiry', 'strike'])
 
     heston_params_slice = heston_params.sel(time=time)
     forwards_bonds_slice = forwards_bonds.sel(time=time)
 
-    fig, axes = plt.subplots(3, 1, figsize=(A4_WIDTH, A4_HEIGHT))
+    fig, axes = plt.subplots(3, 1, figsize=(A4_WIDTH, A4_HEIGHT), sharex=True)
     for e, ax in zip(np.unique(ivs_slice.expiry), axes):
         compute_heston_ivs_slice(ivs_slice.sel(expiry=e),
                                  forwards_bonds_slice.sel(expiry=e),
@@ -131,6 +134,8 @@ def heston_calibration_plot(ivs, forwards_bonds, heston_params, time):
             ).plot(marker='^', linewidth=0, c='tab:orange', ax=ax)
         ax.set_title('expiry: {}'.format(np.datetime_as_string(e, unit='D')))
         ax.set_ylabel('implied volatility')
+        ax.set_xlim(-0.5, 0.5)
+        fig.tight_layout()
 
     return fig
 

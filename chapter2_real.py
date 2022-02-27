@@ -392,11 +392,13 @@ make_plot(
     results_folder + 'greeks_r2.png',
     greeks_r2_plot,
     greeks_lst[mid],
+    forwards_bonds_lst[mid],
     volatility_plots_source
 )
 make_plot(
     results_folder + 'greeks_sr2.png',
     greeks_sr2_plot,
     greeks_lst[mid],
+    forwards_bonds_lst[mid],
     volatility_plots_source
 )
