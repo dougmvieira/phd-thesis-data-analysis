@@ -39,6 +39,47 @@ def heston_volatility_plot(heston_params, sample_stds):
     return fig
 
 
+def heston_volatility_multiday_plot(heston_params_lst, sample_stds_lst):
+    fig, axes = plt.subplots(
+        5, 4, sharex=True, sharey=True, figsize=(A4_WIDTH, A4_HEIGHT)
+    )
+
+    for heston_params, sample_stds, ax in zip(
+        heston_params_lst, sample_stds_lst, axes.ravel()
+    ):
+        heston_time = np.datetime64(0, 'ns') + heston_params.time
+        sample_time = np.datetime64(0, 'ns') + sample_stds.time
+        heston_vol = np.sqrt(heston_params.vol)
+        ax.plot(heston_time, heston_vol, color='tab:blue', label='heston')
+        ax.fill_between(
+            sample_time,
+            sample_stds.lower,
+            sample_stds.upper,
+            color='tab:orange',
+            alpha=0.3,
+            step='mid',
+        )
+        ax.plot(
+            sample_time,
+            sample_stds.estimate,
+            color='tab:orange',
+            label='sample',
+            drawstyle='steps-mid',
+        )
+        date_str = np.datetime_as_string(heston_params.date.values, unit='D')
+        ax.set_title(date_str)
+    axes[0, -1].legend()
+    for ax in axes[-1, :]:
+        ax.xaxis.set_major_formatter(DateFormatter('%H:%M'))
+        for tick in ax.get_xticklabels():
+            tick.set_rotation(90)
+    for ax in axes[:, 0]:
+        ax.set_ylabel('volatility')
+    fig.subplots_adjust(wspace=0)
+    fig.tight_layout()
+    return fig
+
+
 def heston_daily_volatility_plot(heston_params, daily_stds):
     heston_params = [hp for hp in heston_params
                      if not np.all(hp.vol.isnull().data)]
