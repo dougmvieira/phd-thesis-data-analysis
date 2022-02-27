@@ -92,3 +92,9 @@ def equal_split(data, dim, n):
     upper = data[dim].isel({dim: -1}).data
     bins = lower + np.arange(n + 1)*(upper - lower)/n
     return data.groupby_bins(dim, bins)
+
+
+def downsample_time(data, seconds):
+    seconds = np.timedelta64(seconds, 's')
+    mask = (data.time.values % seconds).astype(np.int64) == 0
+    return data.sel(time=mask)
